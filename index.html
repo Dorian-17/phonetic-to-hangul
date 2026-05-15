@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>English → 한국어 Name Transliterator</title>
+  <style>
+    /* ------------------------------------------------------------------ */
+    /* Design tokens                                                        */
+    /* ------------------------------------------------------------------ */
+    :root {
+      --color-bg:           #f5f6fa;
+      --color-surface:      #ffffff;
+      --color-text:         #1a1a2e;
+      --color-text-muted:   #6b7280;
+      --color-text-faint:   #9ca3af;
+      --color-border:       #d1d5db;
+      --color-border-light: #e5e7eb;
+      --color-accent:       #4361ee;
+      --color-accent-bg:    #e0e7ff;
+      --color-accent-focus: rgba(67, 97, 238, 0.15);
+      --color-cons-border:  rgba(67, 97, 238, 0.35);
+      --color-cons-bg:      #eef1fd;
+      --color-vowel-border: rgba(239, 68, 68, 0.3);
+      --color-vowel-bg:     #fef2f2;
+      --color-arrow:        #d1d5db;
+      --color-badge-bg:     #fffbeb;
+      --color-badge-text:   #d97706;
+      --color-badge-border: #fcd34d;
+      --color-arpabet:      #374151;
+    }
+
+    [data-theme="dark"] {
+      --color-bg:           #0f1117;
+      --color-surface:      #1c1f2e;
+      --color-text:         #e8eaf0;
+      --color-text-muted:   #9ca3af;
+      --color-text-faint:   #6b7280;
+      --color-border:       #2d3148;
+      --color-border-light: #252840;
+      --color-accent:       #6b8cff;
+      --color-accent-bg:    #1e2460;
+      --color-accent-focus: rgba(107, 140, 255, 0.2);
+      --color-cons-border:  rgba(107, 140, 255, 0.35);
+      --color-cons-bg:      #1a2050;
+      --color-vowel-border: rgba(239, 100, 100, 0.3);
+      --color-vowel-bg:     #2a1a1a;
+      --color-arrow:        #3d4060;
+      --color-badge-bg:     #2a2010;
+      --color-badge-text:   #f59e0b;
+      --color-badge-border: #78540a;
+      --color-arpabet:      #c9cfe8;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Reset & base                                                         */
+    /* ------------------------------------------------------------------ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1rem 5rem;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Theme toggle                                                         */
+    /* ------------------------------------------------------------------ */
+    #theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      background: var(--color-surface);
+      border: 1.5px solid var(--color-border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      z-index: 100;
+    }
+    #theme-toggle:hover { border-color: var(--color-accent); }
+
+    /* ------------------------------------------------------------------ */
+    /* Header                                                               */
+    /* ------------------------------------------------------------------ */
+    .header { text-align: center; margin-bottom: 2.4rem; }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.35rem;
+    }
+    .header p {
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+      max-width: 440px;
+      line-height: 1.5;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Input                                                                */
+    /* ------------------------------------------------------------------ */
+    #name-input {
+      width: min(500px, 90vw);
+      font-size: 1.5rem;
+      padding: 0.65rem 1.1rem;
+      border: 2px solid var(--color-border);
+      border-radius: 10px;
+      outline: none;
+      background: var(--color-surface);
+      color: var(--color-text);
+      transition: border-color 0.15s, box-shadow 0.15s, background-color 0.2s;
+      display: block;
+    }
+    #name-input:focus {
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px var(--color-accent-focus);
+    }
+    #name-input::placeholder { color: var(--color-text-faint); }
+
+    /* ------------------------------------------------------------------ */
+    /* Decomposition container                                              */
+    /* ------------------------------------------------------------------ */
+    #decomp-container {
+      width: min(680px, 95vw);
+      margin-top: 2.8rem;
+    }
+
+    .decomp-section { margin-bottom: 2rem; }
+
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 0.7rem;
+    }
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: var(--color-accent-bg);
+      color: var(--color-accent);
+      flex-shrink: 0;
+    }
+    .section-label h3 {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--color-text-faint);
+    }
+
+    .token-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Token chips                                                          */
+    /* ------------------------------------------------------------------ */
+    .token-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 48px;
+      padding: 7px 11px;
+      border-radius: 8px;
+      background: var(--color-surface);
+      border: 1.5px solid var(--color-border-light);
+      font-size: 1rem;
+      line-height: 1.2;
+      transition: transform 0.08s, background-color 0.2s, border-color 0.2s;
+    }
+    .token-cell:hover { transform: translateY(-1px); }
+
+    /* Consonant = blue tint */
+    .token-consonant {
+      border-color: var(--color-cons-border);
+      background: var(--color-cons-bg);
+    }
+    /* Vowel = warm tint */
+    .token-vowel {
+      border-color: var(--color-vowel-border);
+      background: var(--color-vowel-bg);
+    }
+
+    .arpabet {
+      font-weight: 700;
+      font-family: 'Courier New', 'Lucida Console', monospace;
+      font-size: 0.9rem;
+      color: var(--color-arpabet);
+    }
+    .ipa-label {
+      font-size: 0.65rem;
+      color: var(--color-text-faint);
+      margin-top: 3px;
+    }
+
+    .jamo-char {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    /* Syllable chips */
+    .syllable-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 14px;
+      border-radius: 10px;
+      background: var(--color-surface);
+      border: 1.5px solid var(--color-border);
+      gap: 3px;
+      transition: background-color 0.2s, border-color 0.2s;
+    }
+    .syllable-char {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--color-text);
+    }
+    .syllable-jamo {
+      font-size: 0.62rem;
+      color: var(--color-text-faint);
+      letter-spacing: 0.05em;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Final hangul output                                                  */
+    /* ------------------------------------------------------------------ */
+    .output-section {
+      margin-top: 2rem;
+      text-align: center;
+    }
+    #hangul-output {
+      font-size: 4rem;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      color: var(--color-text);
+      line-height: 1.1;
+    }
+    .source-badge {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--color-badge-text);
+      background: var(--color-badge-bg);
+      border: 1px solid var(--color-badge-border);
+      border-radius: 5px;
+      padding: 2px 8px;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Divider between steps                                                */
+    /* ------------------------------------------------------------------ */
+    .step-arrow {
+      text-align: center;
+      color: var(--color-arrow);
+      font-size: 1.2rem;
+      margin: -0.6rem 0 0.4rem;
+      user-select: none;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Empty state                                                          */
+    /* ------------------------------------------------------------------ */
+    .empty-hint {
+      text-align: center;
+      color: var(--color-arrow);
+      font-size: 0.9rem;
+      margin-top: 3rem;
+    }
+  </style>
+</head>
+<body>
+  <button id="theme-toggle" aria-label="Toggle dark mode">🌙</button>
+
+  <div class="header">
+    <h1>English → 한국어</h1>
+    <p>Type an English name to see its Korean phonetic transliteration, step by step.</p>
+  </div>
+
+  <input
+    id="name-input"
+    type="text"
+    placeholder="e.g. Michael, Victoria, Carl…"
+    autocomplete="off"
+    spellcheck="false"
+  />
+
+  <div id="decomp-container">
+    <p class="empty-hint">Start typing a name above</p>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
