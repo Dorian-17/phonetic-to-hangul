@@ -6,6 +6,10 @@ export function renderDecomposition(
 ): void {
   container.innerHTML = '';
 
+  if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+  }
+
   if (!result.input) {
     const hint = document.createElement('p');
     hint.className = 'empty-hint';
@@ -81,10 +85,53 @@ export function renderDecomposition(
   const outputSection = document.createElement('div');
   outputSection.className = 'output-section';
 
+  const outputContainer = document.createElement('div');
+  outputContainer.className = 'output-container';
+
   const outputEl = document.createElement('div');
   outputEl.id = 'hangul-output';
   outputEl.textContent = result.hangul;
-  outputSection.appendChild(outputEl);
+  outputContainer.appendChild(outputEl);
+
+  if ('speechSynthesis' in window) {
+    const speakBtn = document.createElement('button');
+    speakBtn.className = 'speak-button';
+    speakBtn.setAttribute('aria-label', 'Listen to Korean pronunciation');
+    speakBtn.setAttribute('title', 'Listen to Korean pronunciation');
+
+    speakBtn.innerHTML = `
+      <svg viewBox="0 0 24 24">
+        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+      </svg>
+    `;
+
+    speakBtn.addEventListener('click', () => {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        speakBtn.classList.remove('playing');
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(result.hangul);
+      utterance.lang = 'ko-KR';
+
+      const voices = window.speechSynthesis.getVoices();
+      const koVoice = voices.find(v => v.lang === 'ko-KR' || v.lang.startsWith('ko'));
+      if (koVoice) {
+        utterance.voice = koVoice;
+      }
+
+      utterance.onstart = () => speakBtn.classList.add('playing');
+      utterance.onend = () => speakBtn.classList.remove('playing');
+      utterance.onerror = () => speakBtn.classList.remove('playing');
+
+      window.speechSynthesis.speak(utterance);
+    });
+
+    outputContainer.appendChild(speakBtn);
+  }
+
+  outputSection.appendChild(outputContainer);
 
   if (result.source === 'rule') {
     const badge = document.createElement('div');
