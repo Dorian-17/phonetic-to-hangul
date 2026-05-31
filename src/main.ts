@@ -1,8 +1,7 @@
-import { transliterate } from './engine/index';
-import { loadDictionary } from './engine/g2p';
-import { renderDecomposition } from './ui/decomposition';
+import { initApp, render } from './ui/app';
 
-// Theme: restore saved preference, fall back to OS preference
+// ── Theme ──────────────────────────────────────────────────────────────────
+
 const savedTheme = localStorage.getItem('theme');
 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 const initialTheme = savedTheme ?? (prefersDark ? 'dark' : 'light');
@@ -19,31 +18,11 @@ themeBtn.addEventListener('click', () => {
   themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
 });
 
-const input = document.getElementById('name-input') as HTMLInputElement;
-const container = document.getElementById('decomp-container') as HTMLElement;
+// ── App ────────────────────────────────────────────────────────────────────
 
-let debounceTimer: ReturnType<typeof setTimeout>;
+const progressEl = document.getElementById('progress-container') as HTMLElement;
+const contentEl = document.getElementById('step-content') as HTMLElement;
+const navEl = document.getElementById('step-nav-container') as HTMLElement;
 
-function renderCurrent(): void {
-  renderDecomposition(transliterate(input.value), container);
-}
-
-input.addEventListener('input', () => {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(renderCurrent, 80);
-});
-
-// Pre-fill from URL ?q= param for shareable links
-const q = new URLSearchParams(location.search).get('q');
-if (q) {
-  input.value = q;
-  renderCurrent();
-}
-
-// Load CMU dictionary in the background. When it arrives, re-render
-// the current input to upgrade from rule-based to dictionary-quality output.
-loadDictionary().then(() => {
-  if (input.value) {
-    renderCurrent();
-  }
-});
+initApp(progressEl, contentEl, navEl);
+render();

@@ -4,6 +4,11 @@ import type { JamoToken, HangulSyllable } from './synthesizer';
 
 export type { JamoToken, HangulSyllable };
 
+// Re-export generation functions for convenient single-import usage
+export { generateKoreanNameProfile } from './name-profile';
+export { generateFanExpression } from './fan-expression';
+export { generateIdentityCard } from './identity-card';
+
 export interface TransliterationResult {
   input: string;
   phonemes: string[];          // stress-stripped ARPAbet, e.g. ['M','AY','K']

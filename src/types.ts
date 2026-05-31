@@ -1,0 +1,203 @@
+export interface BasicInfo {
+  englishName: string;
+  country: string;
+  favoriteArtist: string;
+  fanMood: FanMood | '';
+  koreanLevel: KoreanLevel | '';
+}
+
+export interface BasicInfoFormState {
+  basicInfo: BasicInfo;
+  isValid: boolean;
+}
+
+export interface KoreanNamePronunciationData {
+  /** ARPAbet phonemes, e.g. ['M','AY','K','AH','L'] */
+  phonemes: string[];
+  /** IPA transcription, e.g. ['m','aɪ','k','ə','l'] */
+  ipa: string[];
+}
+
+export interface KoreanNameProfile {
+  originalName: string;
+  koreanName: string;
+  romanization: string;
+  moodDescription: string;
+  identityKeyword: string;
+  pronunciationData: KoreanNamePronunciationData | null;
+  /** Which engine produced the result: CMU dictionary or rule-based fallback. */
+  source: 'cmu' | 'rule';
+  /** True while the dictionary is loading (transient, managed by the app). */
+  isLoading: boolean;
+  /** Non-null if dictionary loading or generation failed. */
+  errorMessage: string | null;
+}
+
+export interface FanExpressionInput {
+  userInput: string;
+  favoriteArtist: string;
+  fanMood: FanMood | '';
+  koreanLevel: KoreanLevel | '';
+}
+
+export type ExpressionTone = 'formal' | 'natural' | 'cute';
+
+export interface ExpressionVersion {
+  tone: ExpressionTone;
+  korean: string;
+  english: string;
+  pronunciation: string;
+  usageNote: string;
+}
+
+export interface FanExpression {
+  userInput: string;
+  toneLabel: string;
+  versions: ExpressionVersion[];
+  /** Which versions the user has explicitly saved/selected. */
+  saved: ExpressionTone[];
+}
+
+export interface ExpressionDraft {
+  /** Raw text from voice or manual input, before generation. */
+  sourceInput: string;
+  /** Whether the input came from 'voice' or 'manual'. */
+  inputMode: VoiceInputMode | null;
+  /** Last voice-recognition error message, if any. */
+  errorMessage: string | null;
+}
+
+export interface VoiceInputResult {
+  transcript: string;
+  isSupported: boolean;
+  errorMessage?: string;
+}
+
+export type VoiceInputMode = 'voice' | 'manual';
+
+export interface VoiceCaptureState {
+  inputMode: VoiceInputMode | null;
+  transcript: string;
+  detectedName: string | null;
+  confidence: number | null;
+  isListening: boolean;
+  errorMessage: string | null;
+}
+
+/** Result from the speech recognition service. */
+export interface SpeechResult {
+  transcript: string;
+  confidence: number;
+}
+
+export interface IdentityCardInput {
+  basicInfo: BasicInfo;
+  koreanNameProfile: KoreanNameProfile;
+  fanExpression: FanExpression;
+  identityProfile: IdentityProfile | null;
+}
+
+export interface IdentityCard {
+  kazaId: string;
+  createdAt: string;
+  englishName: string;
+  koreanName: string;
+  country: string;
+  favoriteArtist: string;
+  fanMood: string;
+  identityType: string;
+  identityKeywords: string[];
+  mood: string;
+  representativeSentence: string;
+  /** @deprecated use identityKeywords instead */
+  identityKeyword: string;
+}
+
+// ── Identity traits ────────────────────────────────────────────────────────
+
+export type IdentityTrait = 'Warm' | 'Cute' | 'Cool' | 'Elegant' | 'Mysterious' | 'Energetic';
+
+export const ALL_TRAITS: IdentityTrait[] = ['Warm', 'Cute', 'Cool', 'Elegant', 'Mysterious', 'Energetic'];
+
+export interface EmotionScores {
+  Warm: number;
+  Cute: number;
+  Cool: number;
+  Elegant: number;
+  Mysterious: number;
+  Energetic: number;
+}
+
+export interface IdentityProfile {
+  /** Traits the user explicitly selected. */
+  selectedTraits: IdentityTrait[];
+  /** Traits suggested by voice emotion analysis, with scores. */
+  suggestedTraits: { trait: IdentityTrait; score: number }[];
+  /** Primary detected emotion label, if any. */
+  detectedEmotion: string | null;
+  /** Suggested identity type from emotion analysis. */
+  suggestedIdentityType: string | null;
+  /** Final identity type derived from selected traits. */
+  identityType: string | null;
+  /** Short, presentation-friendly keywords. */
+  identityKeywords: string[];
+  /** Canonical mood label (derived from traits). */
+  mood: string | null;
+}
+
+export interface FinalPreviewInput {
+  basicInfo: BasicInfo;
+  koreanNameProfile: KoreanNameProfile;
+  fanExpression: FanExpression;
+  identityCard: IdentityCard;
+}
+
+// ── Shared session state ───────────────────────────────────────────────────
+
+/** Top-level state object shared by all steps in the KaZa MVP flow. */
+export interface KaZaSession {
+  /** 1–5 step index driving the progress bar and step renderer. */
+  currentStep: number;
+  /** Ordered list of step numbers the user has successfully completed. */
+  completedSteps: number[];
+  /** Voice-input orchestration state. */
+  voiceCapture: VoiceCaptureState | null;
+  /** Raw user-supplied profile (Step 1 output). */
+  userProfile: BasicInfo | null;
+  /** Generated Korean name profile (Step 2 output). */
+  koreanName: KoreanNameProfile | null;
+  /** Fan sign expression(s) generated by the user. */
+  expressions: FanExpression[];
+  /** Draft state for the expression input screen (Step 4). */
+  expressionDraft: ExpressionDraft;
+  /** Identity traits, emotion, keywords (Step 3 output). */
+  identityProfile: IdentityProfile | null;
+  /** Final identity / fan-pass card. */
+  identityCard: IdentityCard | null;
+}
+
+/** Returns a fully-initialised empty session ready for Step 1. */
+export function createEmptySession(): KaZaSession {
+  return {
+    currentStep: 1,
+    completedSteps: [],
+    voiceCapture: {
+      inputMode: null,
+      transcript: '',
+      detectedName: null,
+      confidence: null,
+      isListening: false,
+      errorMessage: null,
+    },
+    userProfile: null,
+    koreanName: null,
+    expressions: [],
+    expressionDraft: { sourceInput: '', inputMode: null, errorMessage: null },
+    identityProfile: null,
+    identityCard: null,
+  };
+}
+
+export type FanMood = 'sweet' | 'passionate' | 'shy' | 'funny' | 'cool';
+
+export type KoreanLevel = 'beginner' | 'intermediate' | 'advanced';
