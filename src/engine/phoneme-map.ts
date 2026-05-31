@@ -114,6 +114,10 @@ export const PLOSIVE_TO_JONG: Record<string, string> = {
 // ARPAbet vowels classified as long (trigger ㅡ epenthesis before plosive at word end)
 export const LONG_VOWELS = new Set(['IY', 'EY', 'AY', 'OW', 'OY', 'AW', 'UW', 'AO', 'ER']);
 
+// Set of ARPAbet vowel codes (derived from VOWEL_TO_JUNG keys)
+// Single source of truth — imported by the UI for token classification
+export const VOWEL_CODES = new Set(Object.keys(VOWEL_TO_JUNG));
+
 // ARPAbet → IPA for display in the decomposition view
 export const ARPABET_TO_IPA: Record<string, string> = {
   AA: 'ɑ', AE: 'æ', AH: 'ʌ', AH0: 'ə', AO: 'ɔ', AW: 'aʊ', AY: 'aɪ',

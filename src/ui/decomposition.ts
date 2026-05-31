@@ -1,4 +1,24 @@
 import type { TransliterationResult } from '../engine/index';
+import { VOWEL_CODES } from '../engine/phoneme-map';
+
+// Cache the Korean voice reference (loaded once, asynchronously)
+let koreanVoice: SpeechSynthesisVoice | null = null;
+let voicesLoaded = false;
+
+function ensureVoicesLoaded(): Promise<void> {
+  if (voicesLoaded) return Promise.resolve();
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length > 0) {
+    voicesLoaded = true;
+    return Promise.resolve();
+  }
+  return new Promise<void>(resolve => {
+    window.speechSynthesis.addEventListener('voiceschanged', () => {
+      voicesLoaded = true;
+      resolve();
+    }, { once: true });
+  });
+}
 
 export function renderDecomposition(
   result: TransliterationResult,
@@ -105,20 +125,24 @@ export function renderDecomposition(
       </svg>
     `;
 
-    speakBtn.addEventListener('click', () => {
+    speakBtn.addEventListener('click', async () => {
       if (window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
         speakBtn.classList.remove('playing');
         return;
       }
 
+      await ensureVoicesLoaded();
       const utterance = new SpeechSynthesisUtterance(result.hangul);
       utterance.lang = 'ko-KR';
 
-      const voices = window.speechSynthesis.getVoices();
-      const koVoice = voices.find(v => v.lang === 'ko-KR' || v.lang.startsWith('ko'));
-      if (koVoice) {
-        utterance.voice = koVoice;
+      if (!koreanVoice) {
+        koreanVoice = window.speechSynthesis.getVoices().find(
+          v => v.lang === 'ko-KR' || v.lang.startsWith('ko'),
+        ) ?? null;
+      }
+      if (koreanVoice) {
+        utterance.voice = koreanVoice;
       }
 
       utterance.onstart = () => speakBtn.classList.add('playing');
@@ -185,15 +209,6 @@ function makeArrow(): HTMLElement {
   div.textContent = '↓';
   return div;
 }
-
-// ARPAbet vowel phoneme codes
-const VOWEL_CODES = new Set([
-  'AA', 'AE', 'AH', 'AO', 'AW', 'AY',
-  'EH', 'ER', 'EY',
-  'IH', 'IY',
-  'OW', 'OY',
-  'UH', 'UW',
-]);
 
 function isVowelArpabet(p: string): boolean {
   return VOWEL_CODES.has(p);

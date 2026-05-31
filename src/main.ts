@@ -1,4 +1,5 @@
 import { transliterate } from './engine/index';
+import { loadDictionary } from './engine/g2p';
 import { renderDecomposition } from './ui/decomposition';
 
 // Theme: restore saved preference, fall back to OS preference
@@ -23,16 +24,26 @@ const container = document.getElementById('decomp-container') as HTMLElement;
 
 let debounceTimer: ReturnType<typeof setTimeout>;
 
+function renderCurrent(): void {
+  renderDecomposition(transliterate(input.value), container);
+}
+
 input.addEventListener('input', () => {
   clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    renderDecomposition(transliterate(input.value), container);
-  }, 80);
+  debounceTimer = setTimeout(renderCurrent, 80);
 });
 
 // Pre-fill from URL ?q= param for shareable links
 const q = new URLSearchParams(location.search).get('q');
 if (q) {
   input.value = q;
-  renderDecomposition(transliterate(q), container);
+  renderCurrent();
 }
+
+// Load CMU dictionary in the background. When it arrives, re-render
+// the current input to upgrade from rule-based to dictionary-quality output.
+loadDictionary().then(() => {
+  if (input.value) {
+    renderCurrent();
+  }
+});
