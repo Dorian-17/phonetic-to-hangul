@@ -1,10 +1,34 @@
 import type { TransliterationResult } from '../engine/index';
+import { VOWEL_CODES } from '../engine/phoneme-map';
+
+// Cache the Korean voice reference (loaded once, asynchronously)
+let koreanVoice: SpeechSynthesisVoice | null = null;
+let voicesLoaded = false;
+
+function ensureVoicesLoaded(): Promise<void> {
+  if (voicesLoaded) return Promise.resolve();
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length > 0) {
+    voicesLoaded = true;
+    return Promise.resolve();
+  }
+  return new Promise<void>(resolve => {
+    window.speechSynthesis.addEventListener('voiceschanged', () => {
+      voicesLoaded = true;
+      resolve();
+    }, { once: true });
+  });
+}
 
 export function renderDecomposition(
   result: TransliterationResult,
   container: HTMLElement,
 ): void {
   container.innerHTML = '';
+
+  if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+  }
 
   if (!result.input) {
     const hint = document.createElement('p');
@@ -81,10 +105,57 @@ export function renderDecomposition(
   const outputSection = document.createElement('div');
   outputSection.className = 'output-section';
 
+  const outputContainer = document.createElement('div');
+  outputContainer.className = 'output-container';
+
   const outputEl = document.createElement('div');
   outputEl.id = 'hangul-output';
   outputEl.textContent = result.hangul;
-  outputSection.appendChild(outputEl);
+  outputContainer.appendChild(outputEl);
+
+  if ('speechSynthesis' in window) {
+    const speakBtn = document.createElement('button');
+    speakBtn.className = 'speak-button';
+    speakBtn.setAttribute('aria-label', 'Listen to Korean pronunciation');
+    speakBtn.setAttribute('title', 'Listen to Korean pronunciation');
+
+    speakBtn.innerHTML = `
+      <svg viewBox="0 0 24 24">
+        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+      </svg>
+    `;
+
+    speakBtn.addEventListener('click', async () => {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        speakBtn.classList.remove('playing');
+        return;
+      }
+
+      await ensureVoicesLoaded();
+      const utterance = new SpeechSynthesisUtterance(result.hangul);
+      utterance.lang = 'ko-KR';
+
+      if (!koreanVoice) {
+        koreanVoice = window.speechSynthesis.getVoices().find(
+          v => v.lang === 'ko-KR' || v.lang.startsWith('ko'),
+        ) ?? null;
+      }
+      if (koreanVoice) {
+        utterance.voice = koreanVoice;
+      }
+
+      utterance.onstart = () => speakBtn.classList.add('playing');
+      utterance.onend = () => speakBtn.classList.remove('playing');
+      utterance.onerror = () => speakBtn.classList.remove('playing');
+
+      window.speechSynthesis.speak(utterance);
+    });
+
+    outputContainer.appendChild(speakBtn);
+  }
+
+  outputSection.appendChild(outputContainer);
 
   if (result.source === 'rule') {
     const badge = document.createElement('div');
@@ -138,15 +209,6 @@ function makeArrow(): HTMLElement {
   div.textContent = '↓';
   return div;
 }
-
-// ARPAbet vowel phoneme codes
-const VOWEL_CODES = new Set([
-  'AA', 'AE', 'AH', 'AO', 'AW', 'AY',
-  'EH', 'ER', 'EY',
-  'IH', 'IY',
-  'OW', 'OY',
-  'UH', 'UW',
-]);
 
 function isVowelArpabet(p: string): boolean {
   return VOWEL_CODES.has(p);
