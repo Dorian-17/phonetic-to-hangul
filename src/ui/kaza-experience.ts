@@ -149,6 +149,7 @@ const LAUNCH_EXAMPLES: readonly LaunchExample[] = [
 ];
 
 export function initKazaExperience(): void {
+  setupAutoTheme();
   setupHangulCursor();
   setupTypeCloud();
 
@@ -299,6 +300,20 @@ export function initKazaExperience(): void {
   if (q) { input.value = q; showStage(stageInput); updateButton(); void generate(); }
 
   updateButton();
+}
+
+function setupAutoTheme(): void {
+  const win = window as Window & { __kazaApplyAutoTheme?: () => void };
+  const applyTheme = win.__kazaApplyAutoTheme;
+  if (!applyTheme) return;
+
+  applyTheme();
+
+  const darkPreference = window.matchMedia?.('(prefers-color-scheme: dark)');
+  darkPreference?.addEventListener?.('change', applyTheme);
+
+  // Re-check periodically so a page left open across morning/evening changes theme.
+  window.setInterval(applyTheme, 60_000);
 }
 
 function setupHangulCursor(): void {

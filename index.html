@@ -4,6 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KaZa - Your Name in Korean</title>
+  <script>
+    (() => {
+      const resolveTheme = () => {
+        const hour = new Date().getHours();
+        const isDaytime = hour >= 7 && hour < 19;
+        const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+        return prefersDark || !isDaytime ? 'dark' : 'light';
+      };
+
+      const applyTheme = () => {
+        const theme = resolveTheme();
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      };
+
+      applyTheme();
+      window.__kazaApplyAutoTheme = applyTheme;
+    })();
+  </script>
   <style>
     :root {
       --black: #000000;
@@ -24,6 +43,26 @@
       --ink: var(--black);
       --shadow: 0 28px 96px color-mix(in srgb, var(--black) 58%, transparent);
       --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    :root[data-theme="light"] {
+      --black: #FFFFFF;
+      --charcoal: #F2F2F2;
+      --gray: #595959;
+      --soft-white: #323131;
+      --white: #000000;
+      --bg: var(--black);
+      --panel: color-mix(in srgb, var(--charcoal) 78%, transparent);
+      --panel-strong: color-mix(in srgb, var(--gray) 18%, var(--white));
+      --text: var(--white);
+      --muted: color-mix(in srgb, var(--white) 68%, transparent);
+      --faint: color-mix(in srgb, var(--white) 42%, transparent);
+      --line: color-mix(in srgb, var(--gray) 34%, transparent);
+      --line-strong: color-mix(in srgb, var(--white) 26%, transparent);
+      --gold: var(--white);
+      --silver: var(--charcoal);
+      --ink: var(--black);
+      --shadow: 0 28px 96px color-mix(in srgb, var(--white) 14%, transparent);
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -57,6 +96,7 @@
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
+      transition: background 620ms var(--ease), color 420ms var(--ease);
     }
 
     button,
