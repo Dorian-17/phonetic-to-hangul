@@ -19,7 +19,7 @@ interface ScenarioTemplate {
 
 const SCENARIOS: ScenarioTemplate[] = [
   {
-    keywords: ['love', 'love you', 'i love', 'adore', 'admire', 'crush', 'amazing', 'perfect', 'idol', 'inspiration', 'role model', 'favorite', 'best', 'number one', 'the best', '我爱你', '爱你', '喜欢', '好喜欢', '最棒', '偶像', '崇拜'],
+    keywords: ['love', 'love you', 'i love', 'adore', 'admire', 'crush', 'amazing', 'perfect', 'idol', 'inspiration', 'role model', 'favorite', 'best', 'number one', 'the best'],
     toneLabel: 'Warm & Heartfelt',
     formal: {
       korean: '진심으로 사랑합니다. 항상 응원하겠습니다.',
@@ -41,7 +41,7 @@ const SCENARIOS: ScenarioTemplate[] = [
     },
   },
   {
-    keywords: ['thank', 'thanks', 'grateful', 'appreciate', 'blessing', 'thank you', 'thankful', 'gratitude', '谢谢', '感谢', '感恩', '多谢'],
+    keywords: ['thank', 'thanks', 'grateful', 'appreciate', 'blessing', 'thank you', 'thankful', 'gratitude'],
     toneLabel: 'Respectful & Sincere',
     formal: {
       korean: '진심으로 감사드립니다. 덕분에 매일이 행복합니다.',
@@ -63,7 +63,7 @@ const SCENARIOS: ScenarioTemplate[] = [
     },
   },
   {
-    keywords: ['support', 'cheer', 'fighting', 'proud', 'believe', 'always', 'forever', 'rooting', 'root for', 'side', '加油', '支持', '永远', '一直', '相信'],
+    keywords: ['support', 'cheer', 'fighting', 'proud', 'believe', 'always', 'forever', 'rooting', 'root for', 'side'],
     toneLabel: 'Energetic & Cheerful',
     formal: {
       korean: '항상 응원하겠습니다! 당신의 길에 박수를 보냅니다.',
@@ -85,7 +85,7 @@ const SCENARIOS: ScenarioTemplate[] = [
     },
   },
   {
-    keywords: ['tired', 'rest', 'health', 'care', 'worry', 'stay strong', 'healthy', 'rest well', 'take care', 'sleep', 'eat', '辛苦', '休息', '健康', '注意身体', '好好吃饭', '担心'],
+    keywords: ['tired', 'rest', 'health', 'care', 'worry', 'stay strong', 'healthy', 'rest well', 'take care', 'sleep', 'eat'],
     toneLabel: 'Gentle & Caring',
     formal: {
       korean: '건강이 가장 중요합니다. 무리하지 마시고 꼭 쉬세요.',
@@ -107,7 +107,7 @@ const SCENARIOS: ScenarioTemplate[] = [
     },
   },
   {
-    keywords: ['meet', 'finally', 'dream', 'waited', 'excited', 'happy', 'joy', "can't wait", 'looking forward', '终于', '见到', '梦想', '等待', '开心', '激动', '幸福'],
+    keywords: ['meet', 'finally', 'dream', 'waited', 'excited', 'happy', 'joy', "can't wait", 'looking forward'],
     toneLabel: 'Excited & Joyful',
     formal: {
       korean: '드디어 만나 뵙게 되어 영광입니다. 꿈만 같습니다.',
@@ -129,7 +129,7 @@ const SCENARIOS: ScenarioTemplate[] = [
     },
   },
   {
-    keywords: ['goodbye', 'miss', 'wait', 'next time', 'see you', 'come back', 'until', 'soon', 'already', '再见', '想念', '下次', '再会', '舍不得'],
+    keywords: ['goodbye', 'miss', 'wait', 'next time', 'see you', 'come back', 'until', 'soon', 'already'],
     toneLabel: 'Affectionate & Longing',
     formal: {
       korean: '다음에 또 뵙겠습니다. 그날까지 건강하십시오.',

@@ -42,9 +42,9 @@ describe('generateFanExpression', () => {
     expect(a).toEqual(b);
   });
 
-  it('handles Chinese input with keyword matching', () => {
-    const result = generateFanExpression(makeInput({ userInput: '我真的很爱你' }));
-    expect(result.versions[0]!.korean).toContain('사랑');
+  it('handles Korean input without non-Korean keyword matching', () => {
+    const result = generateFanExpression(makeInput({ userInput: '정말 사랑해요' }));
+    expect(result.versions[0]!.korean.length).toBeGreaterThan(0);
   });
 
   it('starts with empty saved array', () => {

@@ -14,6 +14,7 @@ const TYPE_CLOUD_LIBRARY = [
   '별', '봄', '빛', '온', '설', '이', '안', '연', '재', '원',
   '희', '진', '주', '린', '율', '채', '고', '름', '시', '늘',
 ] as const;
+const HANGUL_SYLLABLE_RE = /^[가-힣]$/;
 const COMPOSITION_START_MS = 1320;
 const COMPOSITION_STROKE_STAGGER_MS = 145;
 const COMPOSITION_FINAL_MS = 900;
@@ -372,8 +373,9 @@ interface Rect {
 
 function assignTypeCharText(char: HTMLElement, chars: HTMLElement[]): void {
   const used = new Set(chars.filter((item) => item !== char).map((item) => item.textContent ?? ''));
-  const available = TYPE_CLOUD_LIBRARY.filter((value) => !used.has(value));
-  const pool = available.length > 0 ? available : TYPE_CLOUD_LIBRARY;
+  const hangulOnly = TYPE_CLOUD_LIBRARY.filter((value) => HANGUL_SYLLABLE_RE.test(value));
+  const available = hangulOnly.filter((value) => !used.has(value));
+  const pool = available.length > 0 ? available : hangulOnly;
   char.textContent = pool[Math.floor(Math.random() * pool.length)] ?? TYPE_CLOUD_LIBRARY[0];
 }
 
