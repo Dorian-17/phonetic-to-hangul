@@ -20,7 +20,7 @@ export function renderIdentityCardStep(
   const header = document.createElement('div');
   header.className = 'fanpass-header';
   header.innerHTML = `
-    <span class="fanpass-logo">✦ KAZA</span>
+    <span class="fanpass-logo">✦ KaZa</span>
     <span class="fanpass-badge">K-Identity Fan Pass</span>
   `;
   cardEl.appendChild(header);

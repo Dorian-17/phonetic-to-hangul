@@ -74,7 +74,7 @@ export function renderFinalPreview(
     cardChip.className = 'fan-ready-card-preview';
     cardChip.innerHTML = `
       <div class="fan-ready-card-header">
-        <span>✦ KAZA Fan Pass</span>
+        <span>✦ KaZa Fan Pass</span>
         <span>${identityCard.kazaId}</span>
       </div>
       <div class="fan-ready-card-body">

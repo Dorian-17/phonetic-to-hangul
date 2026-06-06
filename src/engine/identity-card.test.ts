@@ -41,7 +41,7 @@ describe('generateIdentityCard', () => {
   it('generates a card with all required fields', () => {
     const card = generateIdentityCard(makeInput());
 
-    expect(card.kazaId).toMatch(/^KAZA-\d{8}-[0-9A-F]{4}$/);
+    expect(card.kazaId).toMatch(/^KaZa-\d{8}-[0-9A-F]{4}$/);
     expect(card.englishName).toBe('Michael');
     expect(card.koreanName).toBe('마이클');
     expect(card.country).toBe('USA');
@@ -121,14 +121,14 @@ describe('generateIdentityCard', () => {
 describe('generateCardId', () => {
   it("uses a fixed demo date by default for deterministic output", () => {
     const id = generateCardId('Michael', 'USA');
-    expect(id).toMatch(/^KAZA-\d{8}-[0-9A-F]{4}$/);
+    expect(id).toMatch(/^KaZa-\d{8}-[0-9A-F]{4}$/);
     // Default is the demo date, not today's date — ensures deterministic demo runs
-    expect(id.startsWith('KAZA-20260601-')).toBe(true);
+    expect(id.startsWith('KaZa-20260601-')).toBe(true);
   });
 
   it('uses an injected fixed date for deterministic output', () => {
     const id = generateCardId('Michael', 'USA', '20250101');
-    expect(id).toMatch(/^KAZA-20250101-[0-9A-F]{4}$/);
+    expect(id).toMatch(/^KaZa-20250101-[0-9A-F]{4}$/);
   });
 
   it('produces a stable suffix for the same name + country', () => {

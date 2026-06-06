@@ -1,5 +1,5 @@
 /**
- * KAZA Mock Generation — consolidated entry point
+ * KaZa Mock Generation — consolidated entry point
  *
  * All generation functions are pure (deterministic) and require no network.
  * Import from here, or from `./index.ts` for the full engine surface.

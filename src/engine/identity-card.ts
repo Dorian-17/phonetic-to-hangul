@@ -6,7 +6,7 @@ function generateCardId(englishName: string, country: string, date?: string): st
   const datePart = date ?? '20260601';
   const hash = simpleHash(`${englishName}:${country}`);
   const suffix = hash.toString(16).padStart(4, '0').slice(-4).toUpperCase();
-  return `KAZA-${datePart}-${suffix}`;
+  return `KaZa-${datePart}-${suffix}`;
 }
 
 function simpleHash(str: string): number {
