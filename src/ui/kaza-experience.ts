@@ -5,20 +5,20 @@ const CHAR_REVEAL_STAGGER_MS = 90;
 const LAUNCH_WAVE_MS = 980;
 const TYPE_CLOUD_EDGE_PADDING = 32;
 const TYPE_CLOUD_CONTENT_PADDING = 76;
-const TYPE_CLOUD_CHAR_PADDING = 72;
-const TYPE_CLOUD_MIN_DISTANCE = 150;
+const TYPE_CLOUD_CHAR_PADDING = 132;
+const TYPE_CLOUD_MIN_DISTANCE = 270;
 const TYPE_CLOUD_LIBRARY = [
-  '하', '노', '수', '민', '서', '도', '윤', '지', '은', '우',
-  '가', '나', '다', '라', '마', '바', '사', '아', '자', '차',
-  '카', '타', '파', '혜', '빈', '준', '현', '유', '리', '솔',
-  '별', '봄', '빛', '온', '설', '이', '안', '연', '재', '원',
-  '희', '진', '주', '린', '율', '채', '고', '름', '시', '늘',
+  'ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ',
+  'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ', 'ㅏ', 'ㅓ', 'ㅗ', 'ㅜ', 'ㅡ', 'ㅣ',
 ] as const;
-const HANGUL_SYLLABLE_RE = /^[가-힣]$/;
+const HANGUL_TEXT_RE = /^[가-힣ㄱ-ㅎㅏ-ㅣ]+$/;
 const COMPOSITION_START_MS = 1320;
 const COMPOSITION_STROKE_STAGGER_MS = 145;
 const COMPOSITION_FINAL_MS = 900;
 const PRONUNCIATION_AFTER_FINAL_MS = 240;
+const RESULT_TYPING_START_MS = 520;
+const RESULT_TYPING_FRAME_MS = 420;
+const RESULT_TYPING_END_MS = 520;
 const HANGUL_BASE = 0xac00;
 const HANGUL_END = 0xd7a3;
 const JUNG_COUNT = 21;
@@ -158,12 +158,18 @@ export function initKazaExperience(): void {
   const stageInput = document.getElementById('stage-input') as HTMLElement;
   const stageResult = document.getElementById('stage-result') as HTMLElement;
   const keyboardBg = document.getElementById('keyboard-bg') as HTMLElement;
+  const inputKeyboardEcho = document.getElementById('input-keyboard-echo') as HTMLElement;
+  const resultKeyboardEcho = document.getElementById('result-keyboard-echo') as HTMLElement;
   const launchCenter = document.getElementById('launch-center') as HTMLElement;
   const launchText = document.getElementById('launch-text') as HTMLElement;
   const editNameBtn = document.getElementById('edit-name-btn') as HTMLButtonElement;
+  const pronounceBtn = document.getElementById('pronounce-btn') as HTMLButtonElement;
   const input = document.getElementById('name-input') as HTMLInputElement;
   const btn = document.getElementById('generate-btn') as HTMLButtonElement;
   const hint = document.getElementById('generate-hint') as HTMLElement;
+  const transformEl = document.getElementById('name-transform') as HTMLElement;
+  const transformSourceEl = document.getElementById('transform-source') as HTMLElement;
+  const transformFrameEl = document.getElementById('transform-frame') as HTMLElement;
 
   const koreanEl = document.getElementById('korean-display') as HTMLElement;
   const compositionEl = document.getElementById('stroke-composition') as HTMLElement;
@@ -178,40 +184,54 @@ export function initKazaExperience(): void {
   let isGenerating = false;
   let currentKeyboardMode: KeyboardMode = 'en';
   let launchLoopToken = 0;
-  let pronunciationTimer: number | null = null;
+  let currentKoreanName = '';
+  let isEnteringInput = false;
 
-  function clearPronunciationTimer(): void {
-    if (pronunciationTimer !== null) {
-      window.clearTimeout(pronunciationTimer);
-      pronunciationTimer = null;
-    }
+  function stopPronunciation(): void {
     window.speechSynthesis?.cancel();
+    pronounceBtn.classList.remove('is-speaking');
   }
 
-  function schedulePronunciation(koreanName: string, delay: number): void {
-    clearPronunciationTimer();
-    if (!('speechSynthesis' in window)) return;
-
-    pronunciationTimer = window.setTimeout(() => {
-      pronunciationTimer = null;
-      speakKoreanName(koreanName);
-    }, delay);
+  function playPronunciation(): void {
+    if (!currentKoreanName) return;
+    speakKoreanName(currentKoreanName, {
+      onStart: () => pronounceBtn.classList.add('is-speaking'),
+      onEnd: () => pronounceBtn.classList.remove('is-speaking'),
+    });
   }
 
   function showStage(stage: HTMLElement): void {
+    stageStart.classList.remove('is-transitioning');
+    stageInput.classList.remove('is-generating');
+    document.body.classList.toggle('is-app-stage-start', stage === stageStart);
+    document.body.classList.toggle('is-app-stage-input', stage === stageInput);
+    document.body.classList.toggle('is-app-stage-result', stage === stageResult);
     for (const item of [stageStart, stageInput, stageResult]) {
       item.classList.toggle('is-active', item === stage);
     }
-    if (stage !== stageResult) clearPronunciationTimer();
+    if (stage !== stageResult) stopPronunciation();
     if (stage !== stageStart) launchLoopToken++;
-    if (stage === stageInput) requestAnimationFrame(() => repositionTypeCloud?.());
+    if (stage === stageInput) {
+      resetNameTransform();
+      requestAnimationFrame(() => repositionTypeCloud?.());
+      window.setTimeout(() => repositionTypeCloud?.(), 120);
+    }
     window.scrollTo({ top: 0, behavior: 'auto' });
   }
 
-  function enterInputStage(): void {
+  async function enterInputStage(): Promise<void> {
     if (!stageStart.classList.contains('is-active')) return;
+    if (isEnteringInput) return;
+    isEnteringInput = true;
+
+    launchLoopToken++;
+    if (!prefersReducedMotion()) {
+      await playStartToInputTransition(stageStart, keyboardBg, currentKeyboardMode);
+    }
+
     showStage(stageInput);
     requestAnimationFrame(() => input.focus());
+    isEnteringInput = false;
   }
 
   function updateButton(): void {
@@ -219,11 +239,20 @@ export function initKazaExperience(): void {
   }
 
   function finishLoading(): void {
+    stageInput.classList.remove('is-generating');
     isGenerating = false;
     input.disabled = false;
     btn.textContent = 'Generate';
     btn.classList.remove('is-loading');
     updateButton();
+  }
+
+  function resetNameTransform(): void {
+    transformEl.classList.remove('is-active');
+    transformEl.setAttribute('aria-hidden', 'true');
+    transformEl.removeAttribute('aria-label');
+    transformSourceEl.textContent = '';
+    transformFrameEl.innerHTML = '';
   }
 
   async function generate(): Promise<void> {
@@ -236,6 +265,9 @@ export function initKazaExperience(): void {
     btn.classList.add('is-loading');
     input.disabled = true;
     updateButton();
+    if (!prefersReducedMotion()) {
+      startInputGenerateMotion(stageInput, inputKeyboardEcho);
+    }
 
     try { await loadDictionary(); } catch { hint.textContent = 'Dictionary unavailable. Using rules instead.'; }
 
@@ -247,20 +279,30 @@ export function initKazaExperience(): void {
       return;
     }
 
+    resetNameTransform();
     hint.textContent = '';
-    finishLoading();
 
-    renderCharacterReveal(koreanEl, identity.koreanName);
-    const pronunciationDelay = renderNameComposition(compositionEl, identity.koreanName);
+    compositionEl.innerHTML = '';
+    koreanEl.textContent = '';
+    koreanEl.setAttribute('aria-label', identity.koreanName);
+    koreanEl.classList.remove('is-composition-base', 'is-signature-result');
     romanEl.textContent = identity.romanization;
     origEl.textContent = `← ${identity.originalName}`;
     srcEl.textContent = identity.source === 'cmu' ? 'Pronunciation-based' : 'Rule-assisted';
+    if (!prefersReducedMotion()) {
+      await playInputToResultTransition();
+    }
+    currentKoreanName = identity.koreanName;
     showStage(stageResult);
-    schedulePronunciation(identity.koreanName, pronunciationDelay);
+    finishLoading();
+    await playResultTyping(koreanEl, identity.koreanName);
   }
 
   // ── Keyboard field ────────────────────────────────────────────────────
+  document.body.classList.add('is-app-stage-start');
   createKeyboardField(keyboardBg);
+  createKeyboardField(inputKeyboardEcho, 'ko');
+  createKeyboardField(resultKeyboardEcho, 'ko');
 
   const runLaunch = (): void => {
     const token = ++launchLoopToken;
@@ -272,17 +314,24 @@ export function initKazaExperience(): void {
     });
   };
   runLaunch();
-  window.addEventListener('resize', () => { createKeyboardField(keyboardBg, currentKeyboardMode); });
+  window.addEventListener('resize', () => {
+    createKeyboardField(keyboardBg, currentKeyboardMode);
+    createKeyboardField(inputKeyboardEcho, 'ko');
+    createKeyboardField(resultKeyboardEcho, 'ko');
+  });
 
-  stageStart.addEventListener('click', enterInputStage);
+  stageStart.addEventListener('click', () => { void enterInputStage(); });
   stageStart.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); enterInputStage(); }
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); void enterInputStage(); }
   });
 
   editNameBtn.addEventListener('click', () => {
     showStage(stageInput);
     requestAnimationFrame(() => input.focus());
   });
+
+  pronounceBtn.addEventListener('click', playPronunciation);
+  if (!('speechSynthesis' in window)) pronounceBtn.hidden = true;
 
   input.addEventListener('input', () => { updateButton(); heroChips.forEach((c) => c.classList.remove('is-selected')); });
   btn.addEventListener('click', () => { void generate(); });
@@ -312,6 +361,10 @@ function setupAutoTheme(): void {
 
   const darkPreference = window.matchMedia?.('(prefers-color-scheme: dark)');
   darkPreference?.addEventListener?.('change', applyTheme);
+  window.addEventListener('focus', applyTheme);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) applyTheme();
+  });
 
   // Re-check periodically so a page left open across morning/evening changes theme.
   window.setInterval(applyTheme, 60_000);
@@ -343,9 +396,11 @@ function setupTypeCloud(): void {
   const chars = Array.from(document.querySelectorAll<HTMLElement>('.type-char'));
   const layer = document.querySelector<HTMLElement>('.type-cloud');
   if (chars.length === 0) return;
+  sanitizeTypeCloud(chars);
 
   const placeAll = (): void => {
     const placed: Rect[] = [];
+    sanitizeTypeCloud(chars);
     for (const char of chars) {
       assignTypeCharText(char, chars);
       placeChar(char, placed, layer);
@@ -364,6 +419,14 @@ function setupTypeCloud(): void {
   requestAnimationFrame(placeAll);
 }
 
+function sanitizeTypeCloud(chars: HTMLElement[]): void {
+  for (const char of chars) {
+    const text = (char.textContent ?? '').trim();
+    if (HANGUL_TEXT_RE.test(text)) continue;
+    assignTypeCharText(char, chars);
+  }
+}
+
 interface Rect {
   left: number;
   top: number;
@@ -373,13 +436,15 @@ interface Rect {
 
 function assignTypeCharText(char: HTMLElement, chars: HTMLElement[]): void {
   const used = new Set(chars.filter((item) => item !== char).map((item) => item.textContent ?? ''));
-  const hangulOnly = TYPE_CLOUD_LIBRARY.filter((value) => HANGUL_SYLLABLE_RE.test(value));
+  const hangulOnly = TYPE_CLOUD_LIBRARY.filter((value) => HANGUL_TEXT_RE.test(value));
   const available = hangulOnly.filter((value) => !used.has(value));
   const pool = available.length > 0 ? available : hangulOnly;
   char.textContent = pool[Math.floor(Math.random() * pool.length)] ?? TYPE_CLOUD_LIBRARY[0];
 }
 
 function placeChar(char: HTMLElement, placed: Rect[], layer: HTMLElement | null): void {
+  char.style.right = 'auto';
+  char.style.bottom = 'auto';
   const layerRect = layer?.getBoundingClientRect();
   if (!layerRect || layerRect.width <= 0 || layerRect.height <= 0) {
     char.style.left = `${randomBetween(5, 91)}%`;
@@ -388,8 +453,9 @@ function placeChar(char: HTMLElement, placed: Rect[], layer: HTMLElement | null)
   }
 
   const charRect = char.getBoundingClientRect();
-  const width = Math.max(48, charRect.width);
-  const height = Math.max(48, charRect.height);
+  const width = Math.max(72, charRect.width);
+  const height = Math.max(72, charRect.height);
+  const spacing = getTypeCloudSpacing(width, height, layerRect);
   const forbidden = getTypeCloudForbiddenRects(layerRect);
   const maxX = Math.max(TYPE_CLOUD_EDGE_PADDING, layerRect.width - width - TYPE_CLOUD_EDGE_PADDING);
   const maxY = Math.max(TYPE_CLOUD_EDGE_PADDING, layerRect.height - height - TYPE_CLOUD_EDGE_PADDING);
@@ -405,28 +471,19 @@ function placeChar(char: HTMLElement, placed: Rect[], layer: HTMLElement | null)
     candidate.bottom = candidate.top + height;
 
     if (forbidden.some((rect) => intersects(candidate, rect))) continue;
-    if (placed.some((rect) => intersects(expandRect(candidate, TYPE_CLOUD_CHAR_PADDING), rect))) continue;
+    if (placed.some((rect) => intersects(expandRect(candidate, spacing), rect))) continue;
     if (placed.some((rect) => distanceBetweenCenters(candidate, rect) < getTypeCloudMinDistance(layerRect))) {
       continue;
     }
 
+    char.style.visibility = 'visible';
     char.style.left = `${candidate.left}px`;
     char.style.top = `${candidate.top}px`;
     placed.push(candidate);
     return;
   }
 
-  const fallback = {
-    left: randomBetween(TYPE_CLOUD_EDGE_PADDING, maxX),
-    top: randomBetween(TYPE_CLOUD_EDGE_PADDING, maxY),
-    right: 0,
-    bottom: 0,
-  };
-  fallback.right = fallback.left + width;
-  fallback.bottom = fallback.top + height;
-  char.style.left = `${fallback.left}px`;
-  char.style.top = `${fallback.top}px`;
-  placed.push(fallback);
+  char.style.visibility = 'hidden';
 }
 
 function getTypeCloudForbiddenRects(layerRect: DOMRect): Rect[] {
@@ -488,7 +545,13 @@ function distanceBetweenCenters(a: Rect, b: Rect): number {
 }
 
 function getTypeCloudMinDistance(layerRect: DOMRect): number {
-  return Math.max(96, Math.min(TYPE_CLOUD_MIN_DISTANCE, layerRect.width * 0.13));
+  return Math.max(180, Math.min(TYPE_CLOUD_MIN_DISTANCE, layerRect.width * 0.22));
+}
+
+function getTypeCloudSpacing(width: number, height: number, layerRect: DOMRect): number {
+  const characterScale = Math.max(width, height) * 0.54;
+  const viewportScale = Math.min(layerRect.width, layerRect.height) * 0.055;
+  return Math.max(TYPE_CLOUD_CHAR_PADDING, characterScale + viewportScale);
 }
 
 function randomBetween(min: number, max: number): number {
@@ -576,6 +639,27 @@ async function runLaunchExample(ex: LaunchExample, opts: LaunchLoopOptions): Pro
   await wait(220);
 }
 
+async function playStartToInputTransition(stage: HTMLElement, keyboard: HTMLElement, mode: KeyboardMode): Promise<void> {
+  stage.classList.add('is-transitioning');
+  pulseKey(keyboard, mode === 'ko' ? 'ㅏ' : 'A', mode);
+  await wait(960);
+}
+
+function startInputGenerateMotion(stage: HTMLElement, keyboard: HTMLElement): void {
+  stage.classList.add('is-generating');
+  pulseKey(keyboard, 'ㅏ', 'ko');
+}
+
+async function playInputToResultTransition(): Promise<void> {
+  // Wind-up beat: let the input panel implode and the keyboard echo "charge"
+  // (see .stage-input.is-generating) before the result blooms from that seed.
+  await wait(720);
+}
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+}
+
 function setKeyboardMode(container: HTMLElement, mode: KeyboardMode): void {
   for (const key of getKeycaps(container)) {
     key.classList.remove('is-active', 'is-converting');
@@ -618,7 +702,13 @@ function serializeKeyLabel(label: string | readonly string[]): string {
 function renderKeyLabel(key: HTMLElement, label = ''): void {
   key.replaceChildren();
   const lines = label.split('\n');
-  if (lines.length <= 1) { key.textContent = label; return; }
+  if (lines.length <= 1) {
+    const span = document.createElement('span');
+    span.className = 'keycap-main';
+    span.textContent = label;
+    key.appendChild(span);
+    return;
+  }
   for (const line of lines) {
     const span = document.createElement('span');
     if (line.startsWith('icon:')) {
@@ -645,6 +735,62 @@ function renderCharacterReveal(container: HTMLElement, value: string): void {
   }
   void container.offsetWidth;
   container.classList.add('is-composition-base');
+}
+
+async function playResultTyping(container: HTMLElement, value: string): Promise<void> {
+  const frames = buildKoreanInputFrames(value);
+  const typingFrames = frames.length > 0 ? frames : [value];
+
+  container.innerHTML = '';
+  container.classList.remove('is-composition-base');
+  container.classList.add('is-typing-result');
+  container.setAttribute('aria-label', value);
+
+  await wait(RESULT_TYPING_START_MS);
+  for (const frame of typingFrames) {
+    container.textContent = frame;
+    await wait(RESULT_TYPING_FRAME_MS);
+  }
+  container.textContent = value;
+  await wait(RESULT_TYPING_END_MS);
+  container.classList.remove('is-typing-result');
+  container.classList.add('is-signature-result');
+}
+
+function buildKoreanInputFrames(value: string): string[] {
+  const frames: string[] = [];
+  let prefix = '';
+
+  for (const ch of Array.from(value)) {
+    const parts = decomposeHangul(ch);
+    if (!parts) {
+      prefix += ch;
+      addUniqueFrame(frames, prefix);
+      continue;
+    }
+
+    addUniqueFrame(frames, `${prefix}${parts.cho}`);
+    addUniqueFrame(frames, `${prefix}${composeHangulBlock(parts.cho, parts.jung, '')}`);
+    if (parts.jong) {
+      addUniqueFrame(frames, `${prefix}${composeHangulBlock(parts.cho, parts.jung, parts.jong)}`);
+    }
+    prefix += ch;
+  }
+
+  return frames;
+}
+
+function addUniqueFrame(frames: string[], frame: string): void {
+  if (frames[frames.length - 1] === frame) return;
+  frames.push(frame);
+}
+
+function composeHangulBlock(cho: string, jung: string, jong: string): string {
+  const choIndex = CHO_LIST.indexOf(cho as (typeof CHO_LIST)[number]);
+  const jungIndex = JUNG_LIST.indexOf(jung as (typeof JUNG_LIST)[number]);
+  const jongIndex = JONG_LIST.indexOf(jong as (typeof JONG_LIST)[number]);
+  if (choIndex < 0 || jungIndex < 0 || jongIndex < 0) return `${cho}${jung}${jong}`;
+  return String.fromCharCode(HANGUL_BASE + ((choIndex * JUNG_COUNT + jungIndex) * JONG_COUNT) + jongIndex);
 }
 
 interface JamoBox {
@@ -706,11 +852,15 @@ const VOWEL_STROKES: Record<string, string[]> = {
   ㅢ: ['M14 58 H58', 'M72 14 V86'],
 };
 
-function renderNameComposition(container: HTMLElement, value: string): number {
+interface NameCompositionOptions {
+  startDelayMs?: number;
+}
+
+function renderNameComposition(container: HTMLElement, value: string, options: NameCompositionOptions = {}): number {
   container.innerHTML = '';
   let strokeIndex = 0;
   let lastFinalDelay = COMPOSITION_START_MS + COMPOSITION_FINAL_MS;
-  const start = COMPOSITION_START_MS + (Array.from(value).length * CHAR_REVEAL_STAGGER_MS);
+  const start = options.startDelayMs ?? COMPOSITION_START_MS + (Array.from(value).length * CHAR_REVEAL_STAGGER_MS);
 
   for (const ch of Array.from(value)) {
     const glyph = document.createElement('span');
@@ -802,7 +952,12 @@ function getStrokePaths(jamo: string): string[] {
   return CONSONANT_STROKES[jamo] ?? VOWEL_STROKES[jamo] ?? [];
 }
 
-function speakKoreanName(koreanName: string): void {
+interface SpeechHandlers {
+  onStart?: () => void;
+  onEnd?: () => void;
+}
+
+function speakKoreanName(koreanName: string, handlers: SpeechHandlers = {}): void {
   if (!koreanName || !('speechSynthesis' in window)) return;
 
   const utterance = new SpeechSynthesisUtterance(koreanName);
@@ -814,6 +969,12 @@ function speakKoreanName(koreanName: string): void {
   const voices = window.speechSynthesis.getVoices();
   const koreanVoice = voices.find((voice) => voice.lang.toLowerCase().startsWith('ko'));
   if (koreanVoice) utterance.voice = koreanVoice;
+
+  if (handlers.onStart) utterance.addEventListener('start', handlers.onStart);
+  if (handlers.onEnd) {
+    utterance.addEventListener('end', handlers.onEnd);
+    utterance.addEventListener('error', handlers.onEnd);
+  }
 
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
